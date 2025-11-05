@@ -1,184 +1,417 @@
-import { useModal } from "../../hooks/useModal";
-import { Modal } from "../ui/modal";
-import Button from "../ui/button/Button";
-import Input from "../form/input/InputField";
-import Label from "../form/Label";
+import { useState, useEffect } from 'react'
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
+import { Loader2, User, Mail, MapPin, CheckCircle, Edit } from 'lucide-react'
+import { toast } from 'sonner'
+import { contractAddress } from '../lib/wagmi'
+import ABI from '@/lib/contract_abi'
 
-export default function UserInfoCard() {
-  const { isOpen, openModal, closeModal } = useModal();
-  const handleSave = () => {
-    // Handle save logic here
-    console.log("Saving changes...");
-    closeModal();
-  };
+interface UserData {
+  name: string
+  email: string
+  location: string
+  status: boolean
+}
+
+// Composant Modal réutilisable
+function Modal({ isOpen, onClose, className, children }: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  className?: string;
+  children: React.ReactNode 
+}) {
+  if (!isOpen) return null;
+  
   return (
-    <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-6">
-            Personal Information
-          </h4>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className={className}>
+        {children}
+      </DialogContent>
+    </Dialog>
+  )
+}
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
-            <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                First Name
-              </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Musharof
-              </p>
-            </div>
+export default function UserProfilePage() {
+  const { address } = useAccount()
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [userData, setUserData] = useState<UserData>({
+    name: '',
+    email: '',
+    location: '',
+    status: false
+  })
 
-            <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Last Name
-              </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Chowdhury
-              </p>
-            </div>
+  const { data: storedUserData, refetch: refetchUser } = useReadContract({
+    address: contractAddress,
+    abi: ABI,
+    functionName: 'getUser',
+    args: [address],
+  })
 
-            <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Email address
-              </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                randomuser@pimjo.com
-              </p>
-            </div>
+  const { writeContract, isPending, data: hash } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash })
 
-            <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Phone
-              </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                +09 363 398 46
-              </p>
-            </div>
+  useEffect(() => {
+    if (storedUserData && Array.isArray(storedUserData) && storedUserData.length >= 4) {
+      const [name, email, location, status] = storedUserData
+      setUserData({
+        name: name || '',
+        email: email || '',
+        location: location || '',
+        status: status as boolean
+      })
+    }
+  }, [storedUserData])
 
-            <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Bio
-              </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Team Manager
-              </p>
+  useEffect(() => {
+    if (isConfirmed) {
+      toast.success('Profil mis à jour avec succès!')
+      refetchUser()
+      setIsEditing(false)
+      setIsModalOpen(false)
+    }
+  }, [isConfirmed, refetchUser])
+
+  const openModal = () => setIsModalOpen(true)
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setIsEditing(false)
+  }
+
+  const handleRegisterUser = () => {
+    if (!userData.name || !userData.email || !userData.location) {
+      toast.error('Veuillez remplir tous les champs obligatoires')
+      return
+    }
+
+    writeContract({
+      address: contractAddress,
+      abi: ABI,
+      functionName: 'registerUser',
+      args: [userData.name, userData.email, userData.location],
+    })
+  }
+
+  const handleUpdateUser = () => {
+    if (!userData.name || !userData.email || !userData.location) {
+      toast.error('Veuillez remplir tous les champs obligatoires')
+      return
+    }
+
+    writeContract({
+      address: contractAddress,
+      abi: ABI,
+      functionName: 'registerUser',
+      args: [userData.name, userData.email, userData.location],
+    })
+  }
+
+  const isLoading = isPending || isConfirming
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* En-tête du profil */}
+        <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6 bg-white dark:bg-gray-800">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-col items-center w-full gap-6 xl:flex-row">
+              <div className="w-20 h-20 overflow-hidden border border-gray-200 rounded-full dark:border-gray-800 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                {userData.name ? (
+                  <span className="text-2xl font-bold text-white">
+                    {userData.name.split(' ').map(n => n[0]).join('')}
+                  </span>
+                ) : (
+                  <User className="h-8 w-8 text-white" />
+                )}
+              </div>
+              <div className="order-3 xl:order-2">
+                <h4 className="mb-2 text-lg font-semibold text-center text-gray-800 dark:text-white/90 xl:text-left">
+                  {userData.name || 'Utilisateur Non Enregistré'}
+                </h4>
+                <div className="flex flex-col items-center gap-1 text-center xl:flex-row xl:gap-3 xl:text-left">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {userData.status ? 'Membre Verifié' : 'Profil à Compléter'}
+                  </p>
+                  <div className="hidden h-3.5 w-px bg-gray-300 dark:bg-gray-700 xl:block"></div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {userData.location || 'Localisation non définie'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center order-2 gap-2 grow xl:order-3 xl:justify-end">
+                {/* Social Links - Optionnel pour l'instant */}
+                <div className="flex items-center gap-2">
+                  <button className="flex h-11 w-11 items-center justify-center gap-2 rounded-full border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200">
+                    <Mail className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
             </div>
+            <button
+              onClick={openModal}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200 lg:inline-flex lg:w-auto"
+            >
+              <Edit className="h-4 w-4" />
+              {userData.status ? 'Modifier' : 'Compléter le Profil'}
+            </button>
           </div>
         </div>
 
-        <button
-          onClick={openModal}
-          className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200 lg:inline-flex lg:w-auto"
-        >
-          <svg
-            className="fill-current"
-            width="18"
-            height="18"
-            viewBox="0 0 18 18"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M15.0911 2.78206C14.2125 1.90338 12.7878 1.90338 11.9092 2.78206L4.57524 10.116C4.26682 10.4244 4.0547 10.8158 3.96468 11.2426L3.31231 14.3352C3.25997 14.5833 3.33653 14.841 3.51583 15.0203C3.69512 15.1996 3.95286 15.2761 4.20096 15.2238L7.29355 14.5714C7.72031 14.4814 8.11172 14.2693 8.42013 13.9609L15.7541 6.62695C16.6327 5.74827 16.6327 4.32365 15.7541 3.44497L15.0911 2.78206ZM12.9698 3.84272C13.2627 3.54982 13.7376 3.54982 14.0305 3.84272L14.6934 4.50563C14.9863 4.79852 14.9863 5.2734 14.6934 5.56629L14.044 6.21573L12.3204 4.49215L12.9698 3.84272ZM11.2597 5.55281L5.6359 11.1766C5.53309 11.2794 5.46238 11.4099 5.43238 11.5522L5.01758 13.5185L6.98394 13.1037C7.1262 13.0737 7.25666 13.003 7.35947 12.9002L12.9833 7.27639L11.2597 5.55281Z"
-              fill=""
-            />
-          </svg>
-          Edit
-        </button>
-      </div>
+        {/* Informations Personnelles */}
+        <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6 bg-white dark:bg-gray-800">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex-1">
+              <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-6">
+                Informations Personnelles
+              </h4>
 
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[700px] m-4">
-        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
-          <div className="px-2 pr-14">
-            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
-              Edit Personal Information
-            </h4>
-            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
-              Update your details to keep your profile up-to-date.
-            </p>
-          </div>
-          <form className="flex flex-col">
-            <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
-              <div>
-                <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
-                  Social Links
-                </h5>
-
-                <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
+              {userData.status ? (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
                   <div>
-                    <Label>Facebook</Label>
-                    <Input
-                      type="text"
-                      value="https://www.facebook.com/PimjoHQ"
-                    />
+                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                      Nom Complet
+                    </p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+                      {userData.name}
+                    </p>
                   </div>
 
                   <div>
-                    <Label>X.com</Label>
-                    <Input type="text" value="https://x.com/PimjoHQ" />
+                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                      Email
+                    </p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+                      {userData.email}
+                    </p>
                   </div>
 
                   <div>
-                    <Label>Linkedin</Label>
-                    <Input
-                      type="text"
-                      value="https://www.linkedin.com/company/pimjo"
-                    />
+                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                      Téléphone
+                    </p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+                      Non défini
+                    </p>
                   </div>
 
                   <div>
-                    <Label>Instagram</Label>
-                    <Input type="text" value="https://instagram.com/PimjoHQ" />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-7">
-                <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
-                  Personal Information
-                </h5>
-
-                <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>First Name</Label>
-                    <Input type="text" value="Musharof" />
-                  </div>
-
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>Last Name</Label>
-                    <Input type="text" value="Chowdhury" />
-                  </div>
-
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>Email Address</Label>
-                    <Input type="text" value="randomuser@pimjo.com" />
-                  </div>
-
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>Phone</Label>
-                    <Input type="text" value="+09 363 398 46" />
+                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                      Localisation
+                    </p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+                      {userData.location}
+                    </p>
                   </div>
 
                   <div className="col-span-2">
-                    <Label>Bio</Label>
-                    <Input type="text" value="Team Manager" />
+                    <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                      Statut
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                        Profil vérifié sur la blockchain
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3 text-amber-800 dark:text-amber-200">
+                      <div className="flex-1">
+                        <h5 className="font-semibold mb-2">Profil Incomplet</h5>
+                        <p className="text-sm">
+                          Complétez votre profil pour pouvoir interagir avec le marketplace et ajouter des biens.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={openModal}
+                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                      >
+                        Compléter
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            <button
+              onClick={openModal}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200 lg:inline-flex lg:w-auto"
+            >
+              <Edit className="h-4 w-4" />
+              {userData.status ? 'Modifier' : 'Compléter'}
+            </button>
+          </div>
+        </div>
+
+        {/* Informations Wallet */}
+        <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6 bg-white dark:bg-gray-800">
+          <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-4">
+            Informations Wallet
+          </h4>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                Adresse Wallet
+              </p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90 font-mono">
+                {address ? `${address.slice(0, 8)}...${address.slice(-6)}` : 'Non connecté'}
+              </p>
+            </div>
+            <div>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                Statut Blockchain
+              </p>
+              <div className="flex items-center gap-2">
+                {userData.status ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                      Enregistré sur la blockchain
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="h-4 w-4 text-amber-500" />
+                    <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                      Non enregistré
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal d'édition */}
+      <Modal isOpen={isModalOpen} onClose={closeModal} className="max-w-[700px] m-4">
+        <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
+          <div className="px-2 pr-14">
+            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
+              {userData.status ? 'Modifier le Profil' : 'Compléter votre Profil'}
+            </h4>
+            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
+              {userData.status 
+                ? 'Mettez à jour vos informations pour garder votre profil à jour.'
+                : 'Complétez votre profil pour pouvoir ajouter des biens au marketplace.'
+              }
+            </p>
+          </div>
+          
+          <div className="flex flex-col">
+            <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
+              {!userData.status && (
+                <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 mb-6">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3 text-amber-800 dark:text-amber-200">
+                      <div>
+                        <h5 className="font-semibold mb-1">Profil Requis</h5>
+                        <p className="text-sm">
+                          Vous devez compléter votre profil pour pouvoir interagir avec le marketplace.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="space-y-6">
+                <h5 className="text-lg font-medium text-gray-800 dark:text-white/90">
+                  Informations Personnelles
+                </h5>
+
+                <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label htmlFor="modal-name">Nom Complet *</Label>
+                    <Input
+                      id="modal-name"
+                      type="text"
+                      value={userData.name}
+                      onChange={(e) => setUserData({ ...userData, name: e.target.value })}
+                      placeholder="Votre nom complet"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label htmlFor="modal-email">Email *</Label>
+                    <Input
+                      id="modal-email"
+                      type="email"
+                      value={userData.email}
+                      onChange={(e) => setUserData({ ...userData, email: e.target.value })}
+                      placeholder="votre@email.com"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label htmlFor="modal-location">Localisation *</Label>
+                    <Input
+                      id="modal-location"
+                      type="text"
+                      value={userData.location}
+                      onChange={(e) => setUserData({ ...userData, location: e.target.value })}
+                      placeholder="Ville, Pays"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label htmlFor="modal-phone">Téléphone</Label>
+                    <Input
+                      id="modal-phone"
+                      type="text"
+                      placeholder="+33 1 23 45 67 89"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <Label htmlFor="modal-bio">Bio</Label>
+                    <Input
+                      id="modal-bio"
+                      type="text"
+                      placeholder="Décrivez-vous en quelques mots..."
+                      disabled={isLoading}
+                    />
                   </div>
                 </div>
               </div>
             </div>
+            
             <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
-              <Button size="sm" variant="outline" onClick={closeModal}>
-                Close
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={closeModal}
+                disabled={isLoading}
+              >
+                Annuler
               </Button>
-              <Button size="sm" onClick={handleSave}>
-                Save Changes
+              <Button 
+                size="sm" 
+                onClick={userData.status ? handleUpdateUser : handleRegisterUser}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                {userData.status ? 'Mettre à jour' : 'Enregistrer le profil'}
               </Button>
             </div>
-          </form>
+          </div>
         </div>
       </Modal>
     </div>
-  );
+  )
 }

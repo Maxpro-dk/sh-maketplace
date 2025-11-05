@@ -19,15 +19,10 @@ const createIcon = (path: string) => (
 // Items principaux adaptés à votre marketplace
 const navItems: NavItem[] = [
   {
-    icon: createIcon("M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"),
-    name: "Dashboard",
-    path: "/dashboard",
-  },
-  {
     icon: createIcon("M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"),
     name: "Marketplace",
     subItems: [
-      { name: "Tous les produits", path: "/marketplace", new: false },
+      { name: "Tous les produits", path: "/", new: false },
       { name: "Produits certifiés", path: "/certified", new: false },
       { name: "Produits non certifiés", path: "/uncertified", new: false },
     ],
@@ -35,11 +30,7 @@ const navItems: NavItem[] = [
   {
     icon: createIcon("M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"),
     name: "Mes Transactions",
-    subItems: [
-      { name: "Mes achats", path: "/mes-achats", new: false },
-      { name: "En vente", path: "/for-sale", new: false },
-      { name: "Vendu", path: "/sold", new: false },
-    ],
+    path: "/my-products",
   },
   {
     icon: createIcon("M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"),

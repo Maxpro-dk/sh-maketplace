@@ -52,7 +52,7 @@ interface TransferData {
 
 type FilterType = 'all' | 'my-items' | 'certified' | 'uncertified' | 'for-sale'
 
-export default function MarketplaceInterface({typeItem, itemChanged}: {typeItem?: FilterType,  itemChanged?: boolean}) {
+export default function ItemsList({typeItem, itemChanged}: {typeItem?: FilterType,  itemChanged?: boolean}) {
   const { address } = useAccount()
   const [items, setItems] = useState<Item[]>([])
   const [filteredItems, setFilteredItems] = useState<Item[]>([])

@@ -290,7 +290,7 @@ export default function Marketplace() {
 
             <TabsContent value="marketplace" className="space-y-6">
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/60 p-6 shadow-sm">
-                <ItemsList  itemChanged={itemChanged} />
+               
               </div>
             </TabsContent>
 
